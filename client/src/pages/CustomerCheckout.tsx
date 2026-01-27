@@ -31,7 +31,8 @@ export default function CustomerCheckout() {
       },
       {
         onSuccess: (data) => {
-          window.location.href = data.redirectUri;
+          // Open in new window/tab to avoid iframe restrictions from BlinkPay
+          window.open(data.redirectUri, "_blank");
         },
         onError: (error) => {
           toast({
