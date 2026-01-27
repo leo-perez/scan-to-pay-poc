@@ -24,7 +24,8 @@ export async function registerRoutes(
 
   // Get single payment status
   app.get(api.payments.get.path, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const idParam = req.params.id;
+    const id = parseInt(Array.isArray(idParam) ? idParam[0] : idParam);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
 
     const payment = await storage.getPayment(id);
