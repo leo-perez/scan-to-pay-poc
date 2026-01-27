@@ -1,10 +1,11 @@
 import axios from "axios";
-
-// BlinkPay API configuration
-// Default to sandbox for testing, set BLINKPAY_SANDBOX=false for production
-const BLINKPAY_BASE_URL = process.env.BLINKPAY_SANDBOX === "false" 
-  ? "https://debit.blinkpay.co.nz" 
-  : "https://sandbox.debit.blinkpay.co.nz";
+import { 
+  BlinkDebitClient, 
+  GatewayFlow, 
+  AuthFlowDetailTypeEnum,
+  AmountCurrencyEnum,
+  QuickPaymentRequest as BlinkQuickPaymentRequest
+} from "blink-debit-api-client-node";
 
 interface QuickPaymentRequest {
   amount: string;
@@ -22,80 +23,85 @@ interface PaymentStatus {
   quickPaymentId: string;
 }
 
-// Get the API key from environment
-function getApiKey(): string {
-  const apiKey = process.env.BLINKPAY_API_KEY;
-  
-  if (!apiKey) {
-    throw new Error("BLINKPAY_API_KEY not configured");
+let blinkClient: BlinkDebitClient | null = null;
+
+function getBlinkClient(): BlinkDebitClient {
+  if (!blinkClient) {
+    const clientId = process.env.BLINKPAY_CLIENT_ID;
+    const clientSecret = process.env.BLINKPAY_CLIENT_SECRET;
+    
+    if (!clientId || !clientSecret) {
+      throw new Error("BLINKPAY_CLIENT_ID and BLINKPAY_CLIENT_SECRET must be configured");
+    }
+
+    const isSandbox = process.env.BLINKPAY_SANDBOX !== "false";
+    const debitUrl = isSandbox 
+      ? "https://sandbox.debit.blinkpay.co.nz"
+      : "https://debit.blinkpay.co.nz";
+
+    const axiosInstance = axios.create();
+    blinkClient = new BlinkDebitClient(axiosInstance, debitUrl, clientId, clientSecret);
+
+    console.log(`BlinkPay client initialized (${isSandbox ? 'sandbox' : 'production'} mode)`);
   }
 
-  return apiKey;
+  return blinkClient;
 }
 
 export async function createQuickPayment(request: QuickPaymentRequest): Promise<QuickPaymentResponse> {
-  const apiKey = getApiKey();
+  const client = getBlinkClient();
 
-  const payload = {
+  const gatewayFlow = new GatewayFlow();
+  gatewayFlow.type = AuthFlowDetailTypeEnum.Gateway;
+  gatewayFlow.redirectUri = request.redirectUri;
+
+  const paymentRequest: BlinkQuickPaymentRequest = {
     flow: {
-      detail: {
-        type: "gateway",
-        redirect_uri: request.redirectUri,
-      },
+      detail: gatewayFlow,
     },
     amount: {
-      currency: "NZD",
+      currency: AmountCurrencyEnum.NZD,
       total: request.amount,
     },
     pcr: {
       particulars: "ScanToPay",
       code: "PAYMENT",
-      reference: request.reference || "Payment",
+      reference: (request.reference || "Payment").substring(0, 12),
     },
   };
 
   try {
-    const response = await axios.post(
-      `${BLINKPAY_BASE_URL}/payments/v1/quick-payments`,
-      payload,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    console.log("Creating BlinkPay quick payment with request:", JSON.stringify(paymentRequest, null, 2));
+    const response = await client.createQuickPayment(paymentRequest);
+    
+    console.log("BlinkPay response:", JSON.stringify(response, null, 2));
+
+    if (!response.quickPaymentId || !response.redirectUri) {
+      throw new Error("Invalid response from BlinkPay - missing quickPaymentId or redirectUri");
+    }
 
     return {
-      quickPaymentId: response.data.quick_payment_id,
-      redirectUri: response.data.redirect_uri,
+      quickPaymentId: response.quickPaymentId,
+      redirectUri: response.redirectUri,
     };
   } catch (error: any) {
-    console.error("Failed to create BlinkPay payment:", error.response?.data || error.message);
-    throw new Error("Failed to create payment with BlinkPay");
+    console.error("Failed to create BlinkPay payment:", error.response?.data || error.message || error);
+    throw new Error(`Failed to create payment with BlinkPay: ${error.message}`);
   }
 }
 
 export async function getQuickPaymentStatus(quickPaymentId: string): Promise<PaymentStatus> {
-  const apiKey = getApiKey();
+  const client = getBlinkClient();
 
   try {
-    const response = await axios.get(
-      `${BLINKPAY_BASE_URL}/payments/v1/quick-payments/${quickPaymentId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-      }
-    );
-
-    const consent = response.data.consent;
+    const response = await client.getQuickPayment(quickPaymentId);
+    
     let status: "pending" | "completed" | "failed" = "pending";
 
-    // Map BlinkPay consent status to our status
-    if (consent?.status === "Authorised" || consent?.status === "Consumed") {
+    const consentStatus = response.consent?.status;
+    if (consentStatus === "Authorised" || consentStatus === "Consumed") {
       status = "completed";
-    } else if (consent?.status === "Rejected" || consent?.status === "Revoked") {
+    } else if (consentStatus === "Rejected" || consentStatus === "Revoked") {
       status = "failed";
     }
 
@@ -113,5 +119,5 @@ export async function getQuickPaymentStatus(quickPaymentId: string): Promise<Pay
 }
 
 export function isBlinkPayConfigured(): boolean {
-  return !!process.env.BLINKPAY_API_KEY;
+  return !!(process.env.BLINKPAY_CLIENT_ID && process.env.BLINKPAY_CLIENT_SECRET);
 }
