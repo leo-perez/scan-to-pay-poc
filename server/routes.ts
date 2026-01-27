@@ -66,8 +66,16 @@ export async function registerRoutes(
 
       let redirectUri = "";
 
-      // 3. Try BlinkPay if configured, otherwise use mock
-      if (isBlinkPayConfigured()) {
+      // 3. Determine if we should use mock mode
+      // USE_MOCK_PAYMENT=true enables mock mode for development/testing
+      const useMockMode = process.env.USE_MOCK_PAYMENT === "true";
+
+      if (useMockMode) {
+        // Explicit mock mode for development
+        console.log("Mock mode enabled, using mock gateway");
+        redirectUri = `/api/mock-blinkpay-gateway?paymentId=${payment.id}`;
+      } else if (isBlinkPayConfigured()) {
+        // Real BlinkPay integration
         try {
           console.log("Creating BlinkPay quick payment...");
           const blinkResponse = await createQuickPayment({
@@ -80,15 +88,21 @@ export async function registerRoutes(
           await storage.updatePaymentStatus(payment.id, "pending", blinkResponse.quickPaymentId);
           redirectUri = blinkResponse.redirectUri;
           console.log("BlinkPay payment created:", blinkResponse.quickPaymentId);
-        } catch (err) {
-          console.error("BlinkPay API error, falling back to mock:", err);
-          // Fall back to mock if BlinkPay fails
-          redirectUri = `/api/mock-blinkpay-gateway?paymentId=${payment.id}`;
+        } catch (err: any) {
+          console.error("BlinkPay API error:", err.message);
+          // In production, fail the request rather than falling back to mock
+          await storage.updatePaymentStatus(payment.id, "failed");
+          return res.status(502).json({ 
+            message: "Payment gateway error. Please try again later." 
+          });
         }
       } else {
-        // Mock behavior when BlinkPay is not configured
-        console.log("BlinkPay not configured, using mock gateway");
-        redirectUri = `/api/mock-blinkpay-gateway?paymentId=${payment.id}`;
+        // No BlinkPay configured and not in mock mode - error
+        console.error("BlinkPay not configured and mock mode disabled");
+        await storage.updatePaymentStatus(payment.id, "failed");
+        return res.status(503).json({ 
+          message: "Payment service not available" 
+        });
       }
 
       res.status(201).json({ 

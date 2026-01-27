@@ -1,6 +1,7 @@
 import axios from "axios";
 
 // BlinkPay API configuration
+// Default to sandbox for testing, set BLINKPAY_SANDBOX=false for production
 const BLINKPAY_BASE_URL = process.env.BLINKPAY_SANDBOX === "false" 
   ? "https://debit.blinkpay.co.nz" 
   : "https://sandbox.debit.blinkpay.co.nz";
@@ -21,40 +22,19 @@ interface PaymentStatus {
   quickPaymentId: string;
 }
 
-// Get access token using client credentials
-async function getAccessToken(): Promise<string> {
+// Get the API key from environment
+function getApiKey(): string {
   const apiKey = process.env.BLINKPAY_API_KEY;
   
   if (!apiKey) {
     throw new Error("BLINKPAY_API_KEY not configured");
   }
 
-  // BlinkPay uses OAuth2 client credentials flow
-  // The API key format may be "clientId:clientSecret" or just an API key
-  // We'll try the Bearer token approach first
-  try {
-    const response = await axios.post(
-      `${BLINKPAY_BASE_URL}/oauth2/token`,
-      new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: apiKey.split(":")[0] || apiKey,
-        client_secret: apiKey.split(":")[1] || apiKey,
-      }),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      }
-    );
-    return response.data.access_token;
-  } catch (error: any) {
-    console.error("Failed to get BlinkPay access token:", error.response?.data || error.message);
-    throw new Error("Failed to authenticate with BlinkPay");
-  }
+  return apiKey;
 }
 
 export async function createQuickPayment(request: QuickPaymentRequest): Promise<QuickPaymentResponse> {
-  const accessToken = await getAccessToken();
+  const apiKey = getApiKey();
 
   const payload = {
     flow: {
@@ -80,7 +60,7 @@ export async function createQuickPayment(request: QuickPaymentRequest): Promise<
       payload,
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
       }
@@ -97,14 +77,14 @@ export async function createQuickPayment(request: QuickPaymentRequest): Promise<
 }
 
 export async function getQuickPaymentStatus(quickPaymentId: string): Promise<PaymentStatus> {
-  const accessToken = await getAccessToken();
+  const apiKey = getApiKey();
 
   try {
     const response = await axios.get(
       `${BLINKPAY_BASE_URL}/payments/v1/quick-payments/${quickPaymentId}`,
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${apiKey}`,
         },
       }
     );
