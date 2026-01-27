@@ -55,13 +55,16 @@ export async function createQuickPayment(request: QuickPaymentRequest): Promise<
   gatewayFlow.type = AuthFlowDetailTypeEnum.Gateway;
   gatewayFlow.redirectUri = request.redirectUri;
 
+  // Format amount to always have 2 decimal places (BlinkPay requires this)
+  const formattedAmount = parseFloat(request.amount).toFixed(2);
+
   const paymentRequest: BlinkQuickPaymentRequest = {
     flow: {
       detail: gatewayFlow,
     },
     amount: {
       currency: AmountCurrencyEnum.NZD,
-      total: request.amount,
+      total: formattedAmount,
     },
     pcr: {
       particulars: "ScanToPay",

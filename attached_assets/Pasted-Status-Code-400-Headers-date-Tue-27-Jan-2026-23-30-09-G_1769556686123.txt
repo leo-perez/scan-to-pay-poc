@@ -1,0 +1,12 @@
+Status Code: 400
+Headers: {"date":"Tue, 27 Jan 2026 23:30:09 GMT","content-type":"application/json","content-length":"201","connection":"keep-alive","server":"nginx","vary":"Origin, Access-Control-Request-Method, Access-Control-Request-Headers","x-correlation-id":"d61c5709-f936-41dc-9f5a-556a36db91f2","request-id":"374970dd-1bca-40b5-a8e0-24967cb1d9da","cache-control":"no-cache, no-store, max-age=0, must-revalidate","pragma":"no-cache","expires":"0","x-content-type-options":"nosniff","x-frame-options":"DENY","x-xss-protection":"1; mode=block","referrer-policy":"no-referrer"}
+Body: Total must match ^\d{1,13}\.\d{1,2}$
+Status Code: 400
+Headers: {"date":"Tue, 27 Jan 2026 23:30:10 GMT","content-type":"application/json","content-length":"201","connection":"keep-alive","server":"nginx","vary":"Origin, Access-Control-Request-Method, Access-Control-Request-Headers","x-correlation-id":"d61c5709-f936-41dc-9f5a-556a36db91f2","request-id":"374970dd-1bca-40b5-a8e0-24967cb1d9da","cache-control":"no-cache, no-store, max-age=0, must-revalidate","pragma":"no-cache","expires":"0","x-content-type-options":"nosniff","x-frame-options":"DENY","x-xss-protection":"1; mode=block","referrer-policy":"no-referrer"}
+Body: Total must match ^\d{1,13}\.\d{1,2}$
+Status Code: 400
+Headers: {"date":"Tue, 27 Jan 2026 23:30:16 GMT","content-type":"application/json","content-length":"201","connection":"keep-alive","server":"nginx","vary":"Origin, Access-Control-Request-Method, Access-Control-Request-Headers","x-correlation-id":"d61c5709-f936-41dc-9f5a-556a36db91f2","request-id":"374970dd-1bca-40b5-a8e0-24967cb1d9da","cache-control":"no-cache, no-store, max-age=0, must-revalidate","pragma":"no-cache","expires":"0","x-content-type-options":"nosniff","x-frame-options":"DENY","x-xss-protection":"1; mode=block","referrer-policy":"no-referrer"}
+Body: Total must match ^\d{1,13}\.\d{1,2}$
+Failed to create BlinkPay payment: Total must match ^\d{1,13}\.\d{1,2}$
+BlinkPay API error: Failed to create payment with BlinkPay: Total must match ^\d{1,13}\.\d{1,2}$
+11:30:16 PM [express] POST /api/payments 502 in 8085ms :: {"message":"Payment gateway error. Please try again later."}
