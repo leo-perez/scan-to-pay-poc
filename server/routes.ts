@@ -1,10 +1,10 @@
-
 import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { seedDatabase } from "./seed";
+import { createQuickPayment, getQuickPaymentStatus, isBlinkPayConfigured } from "./blinkpay";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -31,6 +31,20 @@ export async function registerRoutes(
     if (!payment) {
       return res.status(404).json({ message: "Payment not found" });
     }
+
+    // If payment has a BlinkPay ID and is still pending, check status with BlinkPay
+    if (payment.blinkPayId && payment.status === "pending" && isBlinkPayConfigured()) {
+      try {
+        const blinkStatus = await getQuickPaymentStatus(payment.blinkPayId);
+        if (blinkStatus.status !== payment.status) {
+          const updated = await storage.updatePaymentStatus(id, blinkStatus.status);
+          return res.json(updated);
+        }
+      } catch (err) {
+        console.error("Error checking BlinkPay status:", err);
+      }
+    }
+
     res.json(payment);
   });
 
@@ -45,47 +59,37 @@ export async function registerRoutes(
         status: "pending",
       });
 
-      // 2. Call BlinkPay API (Mocking for PoC if no keys)
-      // If we had keys, we'd use the SDK here.
-      const hasBlinkPayKeys = process.env.BLINKPAY_CLIENT_ID && process.env.BLINKPAY_CLIENT_SECRET;
-      
+      // 2. Determine redirect URI based on environment
+      const protocol = req.get("x-forwarded-proto") || req.protocol;
+      const host = req.get("host");
+      const confirmationUrl = `${protocol}://${host}/confirmation/${payment.id}`;
+
       let redirectUri = "";
 
-      if (hasBlinkPayKeys) {
-        // --- REAL BLINKPAY INTEGRATION (Skeleton) ---
-        // const client = new BlinkDebitClient(axios);
-        // const request = {
-        //   flow: {
-        //     detail: {
-        //       type: AuthFlowDetailTypeEnum.Gateway,
-        //       redirectUri: `${req.protocol}://${req.get('host')}/confirmation/${payment.id}`
-        //     }
-        //   },
-        //   amount: {
-        //     currency: AmountCurrencyEnum.NZD,
-        //     total: input.amount.toString()
-        //   },
-        //   pcr: {
-        //     particulars: 'ReplitPoC',
-        //     code: 'PAYMENT',
-        //     reference: input.reference || `Ref-${payment.id}`
-        //   }
-        // };
-        // const qpResponse = await client.createQuickPayment(request);
-        // await storage.updatePaymentStatus(payment.id, "pending", qpResponse.quickPaymentId);
-        // redirectUri = qpResponse.redirectUri;
-        
-        console.log("BlinkPay keys present but SDK not fully wired in this PoC step. Falling back to mock.");
-        // For now, even with keys, we might fallback if SDK isn't installed yet.
-        // We will simulate a redirect for the PoC.
-      } 
-      
-      // --- MOCK BEHAVIOR ---
-      // Simulate a "gateway" URL that just redirects back to confirmation with success
-      // In a real app, this would be the BlinkPay URL.
-      // We'll create a special mock route to simulate the user "paying" at the bank.
-      const mockGatewayUrl = `/api/mock-blinkpay-gateway?paymentId=${payment.id}`;
-      redirectUri = mockGatewayUrl;
+      // 3. Try BlinkPay if configured, otherwise use mock
+      if (isBlinkPayConfigured()) {
+        try {
+          console.log("Creating BlinkPay quick payment...");
+          const blinkResponse = await createQuickPayment({
+            amount: input.amount.toString(),
+            reference: input.reference || `Payment-${payment.id}`,
+            redirectUri: confirmationUrl,
+          });
+
+          // Update payment with BlinkPay ID
+          await storage.updatePaymentStatus(payment.id, "pending", blinkResponse.quickPaymentId);
+          redirectUri = blinkResponse.redirectUri;
+          console.log("BlinkPay payment created:", blinkResponse.quickPaymentId);
+        } catch (err) {
+          console.error("BlinkPay API error, falling back to mock:", err);
+          // Fall back to mock if BlinkPay fails
+          redirectUri = `/api/mock-blinkpay-gateway?paymentId=${payment.id}`;
+        }
+      } else {
+        // Mock behavior when BlinkPay is not configured
+        console.log("BlinkPay not configured, using mock gateway");
+        redirectUri = `/api/mock-blinkpay-gateway?paymentId=${payment.id}`;
+      }
 
       res.status(201).json({ 
         paymentId: payment.id, 
@@ -104,20 +108,15 @@ export async function registerRoutes(
     }
   });
 
-  // --- Webhooks (or Mock Gateway) ---
+  // --- Mock Gateway (Fallback for testing without BlinkPay) ---
 
-  // Mock Gateway Route (Simulates the Bank/BlinkPay page)
   app.get("/api/mock-blinkpay-gateway", async (req, res) => {
     const paymentId = parseInt(req.query.paymentId as string);
     
-    // Simulate some delay then "success"
-    // In real flow, BlinkPay would send a webhook or we'd poll.
-    // Here we just update DB to success immediately for the PoC demo.
     if (!isNaN(paymentId)) {
       await storage.updatePaymentStatus(paymentId, "completed", `mock-bp-${Date.now()}`);
     }
 
-    // Redirect user back to the app's confirmation page
     res.redirect(`/confirmation/${paymentId}`);
   });
 
