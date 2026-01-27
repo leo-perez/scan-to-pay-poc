@@ -61,9 +61,15 @@ export async function registerRoutes(
       });
 
       // 2. Determine redirect URI based on environment
-      const protocol = req.get("x-forwarded-proto") || req.protocol;
-      const host = req.get("host");
-      const confirmationUrl = `${protocol}://${host}/confirmation/${payment.id}`;
+      // Use APP_BASE_URL if set (for production), otherwise detect from request
+      let confirmationUrl: string;
+      if (process.env.APP_BASE_URL) {
+        confirmationUrl = `${process.env.APP_BASE_URL}/confirmation/${payment.id}`;
+      } else {
+        const protocol = req.get("x-forwarded-proto") || req.protocol;
+        const host = req.get("host");
+        confirmationUrl = `${protocol}://${host}/confirmation/${payment.id}`;
+      }
 
       let redirectUri = "";
 

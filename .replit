@@ -42,3 +42,4 @@ waitForPort = 5000
 
 [userenv.shared]
 USE_MOCK_PAYMENT = "false"
+APP_BASE_URL = "https://pay-open-back.replit.app"
