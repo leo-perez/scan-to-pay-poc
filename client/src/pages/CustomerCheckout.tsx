@@ -31,8 +31,16 @@ export default function CustomerCheckout() {
       },
       {
         onSuccess: (data) => {
-          // Open in new window/tab to avoid iframe restrictions from BlinkPay
-          window.open(data.redirectUri, "_blank");
+          // Check if we're in an iframe (Replit webview)
+          const isInIframe = window.self !== window.top;
+          
+          if (isInIframe) {
+            // In iframe: open in new tab to bypass BlinkPay iframe restrictions
+            window.open(data.redirectUri, "_blank");
+          } else {
+            // Direct access (mobile/desktop): use standard redirect
+            window.location.href = data.redirectUri;
+          }
         },
         onError: (error) => {
           toast({
