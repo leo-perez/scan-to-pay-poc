@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, buildUrl, type InsertPayment } from "@shared/routes";
+import { api, buildUrl } from "@shared/routes";
+import type { InsertPayment, BankInfo } from "@shared/schema";
 import { z } from "zod";
 
 // Helper to parse dates from JSON since they come as strings
@@ -72,5 +73,17 @@ export function useCreatePayment() {
       }
       return api.payments.create.responses[201].parse(await res.json());
     },
+  });
+}
+
+export function useBanks() {
+  return useQuery<BankInfo[]>({
+    queryKey: [api.banks.list.path],
+    queryFn: async () => {
+      const res = await fetch(api.banks.list.path, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch banks");
+      return api.banks.list.responses[200].parse(await res.json());
+    },
+    staleTime: 1000 * 60 * 5, // Cache banks for 5 minutes
   });
 }

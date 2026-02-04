@@ -19,7 +19,16 @@ export const insertPaymentSchema = createInsertSchema(payments).pick({
   amount: true,
   description: true,
   reference: true,
+}).extend({
+  bank: z.string().optional(),
 });
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+
+export const bankSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+export type BankInfo = z.infer<typeof bankSchema>;

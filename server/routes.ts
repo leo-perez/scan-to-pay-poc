@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { seedDatabase } from "./seed";
-import { createQuickPayment, getQuickPaymentStatus, isBlinkPayConfigured } from "./blinkpay";
+import { createQuickPayment, getQuickPaymentStatus, isBlinkPayConfigured, getAvailableBanks } from "./blinkpay";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -13,6 +13,28 @@ export async function registerRoutes(
 
   // Seed data on startup
   await seedDatabase();
+
+  // --- Banks Route ---
+  app.get(api.banks.list.path, async (req, res) => {
+    // Return mock banks if BlinkPay not configured
+    if (!isBlinkPayConfigured()) {
+      const mockBanks = [
+        { id: "ANZ", name: "ANZ Bank" },
+        { id: "ASB", name: "ASB Bank" },
+        { id: "BNZ", name: "Bank of New Zealand" },
+        { id: "Westpac", name: "Westpac NZ" },
+      ];
+      return res.json(mockBanks);
+    }
+
+    try {
+      const banks = await getAvailableBanks();
+      res.json(banks);
+    } catch (err) {
+      console.error("Failed to fetch banks:", err);
+      res.status(503).json({ message: "Failed to retrieve available banks" });
+    }
+  });
 
   // --- Payment Routes ---
 
@@ -89,6 +111,7 @@ export async function registerRoutes(
             amount: input.amount.toString(),
             reference: input.reference || `Payment-${payment.id}`,
             redirectUri: confirmationUrl,
+            bank: input.bank,
           });
 
           // Update payment with BlinkPay ID

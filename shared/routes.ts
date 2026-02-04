@@ -1,6 +1,6 @@
 
 import { z } from "zod";
-import { insertPaymentSchema, payments } from "./schema";
+import { insertPaymentSchema, payments, bankSchema } from "./schema";
 
 export const errorSchemas = {
   validation: z.object({
@@ -24,7 +24,7 @@ export const api = {
       responses: {
         201: z.object({
           paymentId: z.number(),
-          redirectUri: z.string(), // URL to redirect customer to BlinkPay
+          redirectUri: z.string(),
         }),
         400: errorSchemas.validation,
       },
@@ -42,6 +42,16 @@ export const api = {
       path: "/api/payments",
       responses: {
         200: z.array(z.custom<typeof payments.$inferSelect>()),
+      },
+    },
+  },
+  banks: {
+    list: {
+      method: "GET" as const,
+      path: "/api/banks",
+      responses: {
+        200: z.array(bankSchema),
+        503: errorSchemas.internal,
       },
     },
   },

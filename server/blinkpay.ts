@@ -2,15 +2,24 @@ import axios from "axios";
 import { 
   BlinkDebitClient, 
   GatewayFlow, 
+  RedirectFlow,
   AuthFlowDetailTypeEnum,
   AmountCurrencyEnum,
-  QuickPaymentRequest as BlinkQuickPaymentRequest
+  QuickPaymentRequest as BlinkQuickPaymentRequest,
+  Bank,
+  BankMetadata
 } from "blink-debit-api-client-node";
 
 interface QuickPaymentRequest {
   amount: string;
   reference?: string;
   redirectUri: string;
+  bank?: string;
+}
+
+export interface BankInfo {
+  id: string;
+  name: string;
 }
 
 interface QuickPaymentResponse {
@@ -51,16 +60,29 @@ function getBlinkClient(): BlinkDebitClient {
 export async function createQuickPayment(request: QuickPaymentRequest): Promise<QuickPaymentResponse> {
   const client = getBlinkClient();
 
-  const gatewayFlow = new GatewayFlow();
-  gatewayFlow.type = AuthFlowDetailTypeEnum.Gateway;
-  gatewayFlow.redirectUri = request.redirectUri;
-
   // Format amount to always have 2 decimal places (BlinkPay requires this)
   const formattedAmount = parseFloat(request.amount).toFixed(2);
 
+  let flowDetail: GatewayFlow | RedirectFlow;
+
+  if (request.bank) {
+    // Use RedirectFlow when bank is specified - bypasses bank selection screen
+    const redirectFlow = new RedirectFlow();
+    redirectFlow.type = AuthFlowDetailTypeEnum.Redirect;
+    redirectFlow.redirectUri = request.redirectUri;
+    redirectFlow.bank = request.bank as Bank;
+    flowDetail = redirectFlow;
+  } else {
+    // Use GatewayFlow for BlinkPay's hosted bank selection
+    const gatewayFlow = new GatewayFlow();
+    gatewayFlow.type = AuthFlowDetailTypeEnum.Gateway;
+    gatewayFlow.redirectUri = request.redirectUri;
+    flowDetail = gatewayFlow;
+  }
+
   const paymentRequest: BlinkQuickPaymentRequest = {
     flow: {
-      detail: gatewayFlow,
+      detail: flowDetail,
     },
     amount: {
       currency: AmountCurrencyEnum.NZD,
@@ -123,4 +145,32 @@ export async function getQuickPaymentStatus(quickPaymentId: string): Promise<Pay
 
 export function isBlinkPayConfigured(): boolean {
   return !!(process.env.BLINKPAY_CLIENT_ID && process.env.BLINKPAY_CLIENT_SECRET);
+}
+
+export async function getAvailableBanks(): Promise<BankInfo[]> {
+  const client = getBlinkClient();
+
+  try {
+    const metadata: BankMetadata[] = await client.getMeta();
+    
+    return metadata.map((bank) => ({
+      id: bank.name as string,
+      name: formatBankName(bank.name as string),
+    }));
+  } catch (error: any) {
+    console.error("Failed to get BlinkPay bank metadata:", error.response?.data || error.message);
+    throw new Error("Failed to retrieve available banks");
+  }
+}
+
+function formatBankName(bankId: string): string {
+  const bankNames: Record<string, string> = {
+    "ANZ": "ANZ Bank",
+    "ASB": "ASB Bank",
+    "BNZ": "Bank of New Zealand",
+    "Westpac": "Westpac NZ",
+    "PNZ": "The Co-operative Bank",
+    "Kiwibank": "Kiwibank",
+  };
+  return bankNames[bankId] || bankId;
 }
