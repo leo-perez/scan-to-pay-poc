@@ -28,7 +28,7 @@ export function usePayments() {
 
 export function usePayment(id: number) {
   return useQuery({
-    queryKey: ["/api/payments", id],
+    queryKey: [api.payments.get.path, id],
     queryFn: async () => {
       const url = buildUrl(api.payments.get.path, { id });
       const res = await fetch(url, { credentials: "include" });
@@ -39,9 +39,8 @@ export function usePayment(id: number) {
       const parsed = api.payments.get.responses[200].parse(data);
       return parsePayment(parsed);
     },
-    enabled: !isNaN(id) && id > 0,
-    staleTime: 0,
     refetchInterval: (query) => {
+      // Poll until completed or failed
       const status = query.state.data?.status;
       return status === "completed" || status === "failed" ? false : 2000;
     },
