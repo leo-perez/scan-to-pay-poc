@@ -27,8 +27,6 @@ export function usePayments() {
 }
 
 export function usePayment(id: number) {
-  const isValidId = !isNaN(id) && id > 0;
-  
   return useQuery({
     queryKey: [api.payments.get.path, id],
     queryFn: async () => {
@@ -41,7 +39,6 @@ export function usePayment(id: number) {
       const parsed = api.payments.get.responses[200].parse(data);
       return parsePayment(parsed);
     },
-    enabled: isValidId,
     refetchInterval: (query) => {
       // Poll until completed or failed
       const status = query.state.data?.status;

@@ -2,9 +2,8 @@ import { useState } from "react";
 import { useCreatePayment, useBanks } from "@/hooks/use-payments";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, ShieldCheck, ArrowRight, ArrowLeft, Loader2, CheckCircle, Lock } from "lucide-react";
+import { ShoppingBag, ShieldCheck, ArrowRight, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSearch } from "wouter";
 
 import anzLogo from "@assets/Logo_Bank_ANZ_1770245105760.png";
 import asbLogo from "@assets/Logo_Bank_ASB_1770245105761.png";
@@ -21,16 +20,9 @@ const bankLogos: Record<string, string> = {
 type CheckoutStep = "amount" | "bank" | "redirecting";
 
 export default function CustomerCheckout() {
-  const searchString = useSearch();
-  const urlParams = new URLSearchParams(searchString);
-  const prefilledAmount = urlParams.get("amount");
-  const prefilledReference = urlParams.get("reference");
-  
-  const hasPrefilledAmount = prefilledAmount && !isNaN(Number(prefilledAmount)) && Number(prefilledAmount) > 0;
-  
-  const [step, setStep] = useState<CheckoutStep>(hasPrefilledAmount ? "bank" : "amount");
-  const [amount, setAmount] = useState(prefilledAmount || "");
-  const [reference, setReference] = useState(prefilledReference || "");
+  const [step, setStep] = useState<CheckoutStep>("amount");
+  const [amount, setAmount] = useState("");
+  const [reference, setReference] = useState("");
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   
   const { mutate, isPending } = useCreatePayment();
@@ -207,31 +199,14 @@ export default function CustomerCheckout() {
 
           {step === "bank" && (
             <div className="space-y-6">
-              {!hasPrefilledAmount && (
-                <button 
-                  onClick={handleBack}
-                  data-testid="button-back-to-amount"
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gray-900 transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back
-                </button>
-              )}
-
-              {hasPrefilledAmount && (
-                <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm text-muted-foreground">Amount to pay</div>
-                      <div className="text-2xl font-bold text-gray-900">{formatAmount(amount)} NZD</div>
-                      {reference && <div className="text-sm text-muted-foreground mt-1">{reference}</div>}
-                    </div>
-                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                      <Lock className="w-5 h-5 text-primary" />
-                    </div>
-                  </div>
-                </div>
-              )}
+              <button 
+                onClick={handleBack}
+                data-testid="button-back-to-amount"
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </button>
 
               <div className="space-y-3">
                 {banksLoading ? (
