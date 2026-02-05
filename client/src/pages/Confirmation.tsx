@@ -1,13 +1,44 @@
-import { useRoute } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { usePayment } from "@/hooks/use-payments";
 import { Loader2, CheckCircle2, XCircle, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
 export default function Confirmation() {
-  const [, params] = useRoute("/confirmation/:id");
-  const id = Number(params?.id);
+  const params = useParams<{ id: string }>();
+  const [location] = useLocation();
+  
+  // Try to get ID from wouter params, fallback to extracting from window.location
+  let id = params.id ? parseInt(params.id, 10) : NaN;
+  
+  // Fallback: extract ID from URL path if params didn't work
+  if (isNaN(id)) {
+    const pathMatch = window.location.pathname.match(/\/confirmation\/(\d+)/);
+    if (pathMatch) {
+      id = parseInt(pathMatch[1], 10);
+    }
+  }
+  
   const { data: payment, isLoading, error } = usePayment(id);
+
+  if (isNaN(id) || id <= 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center space-y-6">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto text-red-600">
+            <XCircle className="w-10 h-10" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Invalid Payment</h2>
+            <p className="text-muted-foreground mt-2">This payment link is not valid.</p>
+          </div>
+          <Link href="/checkout">
+            <Button variant="outline" className="w-full">Start New Payment</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
