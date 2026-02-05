@@ -28,21 +28,27 @@ export function usePayments() {
 
 export function usePayment(id: number) {
   return useQuery({
-    queryKey: [api.payments.get.path, id],
+    queryKey: ['/api/payments', id],
     queryFn: async () => {
       const url = buildUrl(api.payments.get.path, { id });
+      console.log(`Fetching payment ${id} from ${url}`);
       const res = await fetch(url, { credentials: "include" });
       if (res.status === 404) throw new Error("Payment not found");
       if (!res.ok) throw new Error("Failed to fetch payment");
       
       const data = await res.json();
+      console.log(`Payment ${id} data:`, data);
       const parsed = api.payments.get.responses[200].parse(data);
       return parsePayment(parsed);
     },
+    enabled: !isNaN(id) && id > 0,
+    staleTime: 0,
     refetchInterval: (query) => {
-      // Poll until completed or failed
       const status = query.state.data?.status;
-      return status === "completed" || status === "failed" ? false : 2000;
+      if (status === "completed" || status === "failed") {
+        return false;
+      }
+      return 2000;
     },
   });
 }

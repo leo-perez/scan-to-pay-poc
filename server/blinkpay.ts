@@ -124,9 +124,11 @@ export async function getQuickPaymentStatus(quickPaymentId: string): Promise<Pay
     let status: "pending" | "completed" | "failed" = "pending";
 
     const consentStatus = response.consent?.status;
-    if (consentStatus === "Authorised" || consentStatus === "Consumed") {
+    console.log(`BlinkPay consent status for ${quickPaymentId}: ${consentStatus}`);
+    
+    if (consentStatus === "Authorised" || consentStatus === "Consumed" || consentStatus === "AcceptedSettlementCompleted") {
       status = "completed";
-    } else if (consentStatus === "Rejected" || consentStatus === "Revoked") {
+    } else if (consentStatus === "Rejected" || consentStatus === "Revoked" || consentStatus === "GatewayTimeout") {
       status = "failed";
     }
 

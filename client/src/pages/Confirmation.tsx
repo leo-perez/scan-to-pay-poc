@@ -7,6 +7,9 @@ import { Link } from "wouter";
 export default function Confirmation() {
   const [, params] = useRoute("/confirmation/:id");
   const id = Number(params?.id);
+  
+  console.log("Confirmation page - Payment ID from URL:", id, "params:", params);
+  
   const { data: payment, isLoading, error } = usePayment(id);
 
   if (isLoading) {
