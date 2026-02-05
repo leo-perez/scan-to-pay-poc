@@ -7,7 +7,27 @@ import { Link } from "wouter";
 export default function Confirmation() {
   const [, params] = useRoute("/confirmation/:id");
   const id = Number(params?.id);
+  const isValidId = !isNaN(id) && id > 0;
   const { data: payment, isLoading, error } = usePayment(id);
+
+  if (!isValidId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center space-y-6">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto text-red-600">
+            <XCircle className="w-10 h-10" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Invalid Payment</h2>
+            <p className="text-muted-foreground mt-2">This payment link is not valid.</p>
+          </div>
+          <Link href="/">
+            <Button variant="outline" className="w-full">Return Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
