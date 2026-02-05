@@ -31,9 +31,9 @@ export default function Landing() {
                 <h3 className="text-2xl font-bold">Merchant Dashboard</h3>
                 <p className="text-muted-foreground">Monitor transactions live and display your payment QR code.</p>
               </div>
-              <div className="pt-4">
+              <div className="pt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0">
                 <span className="text-primary font-semibold flex items-center gap-2">
-                  Launch Dashboard <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  Launch Dashboard <ArrowRight className="w-4 h-4" />
                 </span>
               </div>
             </div>
@@ -49,9 +49,9 @@ export default function Landing() {
                 <h3 className="text-2xl font-bold">Customer Checkout</h3>
                 <p className="text-muted-foreground">Simulate a customer scanning a code to make a secure payment.</p>
               </div>
-              <div className="pt-4">
+              <div className="pt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0">
                 <span className="text-accent font-semibold flex items-center gap-2">
-                  Start Payment <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  Start Payment <ArrowRight className="w-4 h-4" />
                 </span>
               </div>
             </div>
