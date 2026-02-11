@@ -115,16 +115,53 @@ export async function createQuickPayment(request: QuickPaymentRequest): Promise<
   }
 }
 
-export async function getQuickPaymentStatus(quickPaymentId: string): Promise<PaymentStatus> {
-  const client = getBlinkClient();
+async function getAccessToken(): Promise<string> {
+  const clientId = process.env.BLINKPAY_CLIENT_ID;
+  const clientSecret = process.env.BLINKPAY_CLIENT_SECRET;
+  const isSandbox = process.env.BLINKPAY_SANDBOX !== "false";
+  const tokenUrl = isSandbox
+    ? "https://sandbox.debit.blinkpay.co.nz/oauth2/token"
+    : "https://debit.blinkpay.co.nz/oauth2/token";
 
+  const response = await axios.post(tokenUrl, 
+    "grant_type=client_credentials",
+    {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      auth: { username: clientId!, password: clientSecret! },
+    }
+  );
+  return response.data.access_token;
+}
+
+async function getStatusViaDirectApi(quickPaymentId: string): Promise<PaymentStatus> {
+  const isSandbox = process.env.BLINKPAY_SANDBOX !== "false";
+  const baseUrl = isSandbox
+    ? "https://sandbox.debit.blinkpay.co.nz"
+    : "https://debit.blinkpay.co.nz";
+
+  const token = await getAccessToken();
+  const response = await axios.get(`${baseUrl}/payments/v1/quick-payments/${quickPaymentId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const consentStatus = response.data?.consent?.status;
+  console.log(`[Direct API] BlinkPay consent status for ${quickPaymentId}: "${consentStatus}"`);
+
+  return {
+    status: mapBlinkPayStatus(consentStatus || ""),
+    quickPaymentId,
+  };
+}
+
+export async function getQuickPaymentStatus(quickPaymentId: string): Promise<PaymentStatus> {
   try {
+    const client = getBlinkClient();
     const response = await client.getQuickPayment(quickPaymentId);
     
     let status: "pending" | "completed" | "failed" = "pending";
 
     const consentStatus = response.consent?.status;
-    console.log(`BlinkPay consent status for ${quickPaymentId}: "${consentStatus}"`, JSON.stringify(response.consent, null, 2));
+    console.log(`BlinkPay consent status for ${quickPaymentId}: "${consentStatus}"`);
     
     if (consentStatus === "Authorised" || consentStatus === "Consumed") {
       status = "completed";
@@ -137,11 +174,16 @@ export async function getQuickPaymentStatus(quickPaymentId: string): Promise<Pay
       quickPaymentId,
     };
   } catch (error: any) {
-    console.error("Failed to get BlinkPay payment status:", error.response?.data || error.message);
-    return {
-      status: "pending",
-      quickPaymentId,
-    };
+    console.error("SDK status check failed, trying direct API:", error.message);
+    try {
+      return await getStatusViaDirectApi(quickPaymentId);
+    } catch (fallbackError: any) {
+      console.error("Direct API status check also failed:", fallbackError.response?.data || fallbackError.message);
+      return {
+        status: "pending",
+        quickPaymentId,
+      };
+    }
   }
 }
 
