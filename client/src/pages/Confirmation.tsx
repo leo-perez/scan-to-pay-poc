@@ -1,6 +1,7 @@
+import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { usePayment } from "@/hooks/use-payments";
-import { Loader2, CheckCircle2, XCircle, Home } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Home, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
@@ -8,6 +9,14 @@ export default function Confirmation() {
   const [, params] = useRoute("/confirmation/:id");
   const id = Number(params?.id);
   const { data: payment, isLoading, error } = usePayment(id);
+  const [waitTime, setWaitTime] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWaitTime(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (isLoading) {
     return (
@@ -65,21 +74,27 @@ export default function Confirmation() {
             )}
             {isPending && (
               <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 animate-pulse-slow">
-                <Loader2 className="w-12 h-12 animate-spin" />
+                {waitTime < 15 ? (
+                  <Loader2 className="w-12 h-12 animate-spin" />
+                ) : (
+                  <Clock className="w-12 h-12" />
+                )}
               </div>
             )}
           </div>
 
           <div className="space-y-2">
             <h1 className="text-3xl font-display font-bold text-gray-900">
-              {isSuccess ? "Payment Successful!" : isFailed ? "Payment Failed" : "Processing..."}
+              {isSuccess ? "Payment Successful!" : isFailed ? "Payment Failed" : waitTime < 15 ? "Processing..." : "Awaiting Bank Confirmation"}
             </h1>
             <p className="text-muted-foreground">
               {isSuccess 
                 ? "Your transaction has been processed securely." 
                 : isFailed 
                 ? "Please try again or use a different account."
-                : "Waiting for final confirmation..."
+                : waitTime < 15
+                ? "Waiting for final confirmation..."
+                : "Your payment is being processed by your bank. This may take a moment. You can return home and check the merchant dashboard for updates."
               }
             </p>
           </div>

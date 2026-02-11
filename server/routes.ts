@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { seedDatabase } from "./seed";
-import { createQuickPayment, getQuickPaymentStatus, isBlinkPayConfigured, getAvailableBanks } from "./blinkpay";
+import { createQuickPayment, getQuickPaymentStatus, isBlinkPayConfigured, getAvailableBanks, mapBlinkPayStatus } from "./blinkpay";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -149,6 +149,41 @@ export async function registerRoutes(
       }
       console.error(err);
       res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
+  // --- BlinkPay Webhook ---
+  app.post("/api/webhooks/blinkpay", async (req, res) => {
+    try {
+      console.log("BlinkPay webhook received:", JSON.stringify(req.body, null, 2));
+
+      const quickPaymentId = req.body?.quick_payment_id;
+      const consentStatus = req.body?.status;
+
+      if (!quickPaymentId) {
+        console.warn("Webhook: Missing quick_payment_id");
+        return res.status(200).json({ message: "OK" });
+      }
+
+      const payment = await storage.getPaymentByBlinkPayId(quickPaymentId);
+
+      if (!payment) {
+        console.warn(`Webhook: No payment found for BlinkPay ID ${quickPaymentId}`);
+        return res.status(200).json({ message: "OK" });
+      }
+
+      if (consentStatus) {
+        const mappedStatus = mapBlinkPayStatus(consentStatus);
+        if (mappedStatus !== "pending" && mappedStatus !== payment.status) {
+          await storage.updatePaymentStatus(payment.id, mappedStatus);
+          console.log(`Webhook: Updated payment ${payment.id} from ${payment.status} to ${mappedStatus} (consent: ${consentStatus})`);
+        }
+      }
+
+      res.status(200).json({ message: "OK" });
+    } catch (err) {
+      console.error("Webhook error:", err);
+      res.status(200).json({ message: "OK" });
     }
   });
 

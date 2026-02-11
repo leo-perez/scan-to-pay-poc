@@ -5,6 +5,7 @@ import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   getPayment(id: number): Promise<Payment | undefined>;
+  getPaymentByBlinkPayId(blinkPayId: string): Promise<Payment | undefined>;
   getPayments(): Promise<Payment[]>;
   createPayment(payment: InsertPayment & { blinkPayId?: string; status?: string }): Promise<Payment>;
   updatePaymentStatus(id: number, status: string, blinkPayId?: string): Promise<Payment>;
@@ -13,6 +14,11 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   async getPayment(id: number): Promise<Payment | undefined> {
     const [payment] = await db.select().from(payments).where(eq(payments.id, id));
+    return payment;
+  }
+
+  async getPaymentByBlinkPayId(blinkPayId: string): Promise<Payment | undefined> {
+    const [payment] = await db.select().from(payments).where(eq(payments.blinkPayId, blinkPayId));
     return payment;
   }
 
