@@ -2,20 +2,8 @@ import { useState } from "react";
 import { useCreatePayment, useBanks } from "@/hooks/use-payments";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, ShieldCheck, ArrowRight, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
+import { ShoppingBag, ShieldCheck, ArrowRight, ArrowLeft, Loader2, Building2, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-import anzLogo from "@assets/Logo_Bank_ANZ_1770245105760.png";
-import asbLogo from "@assets/Logo_Bank_ASB_1770245105761.png";
-import bnzLogo from "@assets/Logo_Bank_BNZ_1770245105762.png";
-import pnzLogo from "@assets/Logo_Bank_The_Co-operative_Bank_1770245105762.png";
-
-const bankLogos: Record<string, string> = {
-  ANZ: anzLogo,
-  ASB: asbLogo,
-  BNZ: bnzLogo,
-  PNZ: pnzLogo,
-};
 
 type CheckoutStep = "amount" | "bank" | "redirecting";
 
@@ -226,16 +214,11 @@ export default function CustomerCheckout() {
                           : "border-gray-100 hover:border-gray-200 bg-gray-50"
                       )}
                     >
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white border border-gray-200 overflow-hidden">
-                        {bankLogos[bank.id] ? (
-                          <img 
-                            src={bankLogos[bank.id]} 
-                            alt={bank.name} 
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-xs font-bold text-gray-500">{bank.id}</span>
-                        )}
+                      <div className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center",
+                        selectedBank === bank.id ? "bg-primary text-white" : "bg-white border border-gray-200"
+                      )}>
+                        <Building2 className="w-6 h-6" />
                       </div>
                       <div className="flex-1">
                         <div className="font-semibold text-gray-900">{bank.name}</div>
