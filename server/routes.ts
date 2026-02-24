@@ -41,6 +41,25 @@ export async function registerRoutes(
   // List payments (for Merchant Dashboard)
   app.get(api.payments.list.path, async (req, res) => {
     const payments = await storage.getPayments();
+
+    if (isBlinkPayConfigured()) {
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const pendingWithBlinkId = payments.filter(
+        (p) => p.status === "pending" && p.blinkPayId && new Date(p.createdAt!) > oneDayAgo
+      );
+      for (const p of pendingWithBlinkId) {
+        try {
+          const blinkStatus = await getQuickPaymentStatus(p.blinkPayId!);
+          if (blinkStatus.status !== p.status) {
+            const updated = await storage.updatePaymentStatus(p.id, blinkStatus.status);
+            Object.assign(p, updated);
+          }
+        } catch (err) {
+          console.error(`Error checking BlinkPay status for payment ${p.id}:`, err);
+        }
+      }
+    }
+
     res.json(payments);
   });
 

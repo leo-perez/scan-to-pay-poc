@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoute } from "wouter";
 import { usePayment } from "@/hooks/use-payments";
 import { Loader2, CheckCircle2, XCircle, Home, Clock } from "lucide-react";
@@ -10,6 +10,24 @@ export default function Confirmation() {
   const id = Number(params?.id);
   const { data: payment, isLoading, error } = usePayment(id);
   const [waitTime, setWaitTime] = useState(0);
+  const redirectHandled = useRef(false);
+
+  useEffect(() => {
+    if (redirectHandled.current || !id) return;
+    redirectHandled.current = true;
+
+    const storageKey = `blinkpay_redirect_${id}`;
+    const redirectUri = sessionStorage.getItem(storageKey);
+    if (!redirectUri) return;
+    sessionStorage.removeItem(storageKey);
+
+    const isInIframe = window.self !== window.top;
+    if (isInIframe) {
+      window.open(redirectUri, "_blank");
+    } else {
+      window.location.href = redirectUri;
+    }
+  }, [id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
