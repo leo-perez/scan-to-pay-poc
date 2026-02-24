@@ -39,8 +39,9 @@ export function usePayment(id: number) {
       const parsed = api.payments.get.responses[200].parse(data);
       return parsePayment(parsed);
     },
+    enabled: !isNaN(id) && id > 0,
+    retry: 3,
     refetchInterval: (query) => {
-      // Poll until completed or failed
       const status = query.state.data?.status;
       return status === "completed" || status === "failed" ? false : 2000;
     },

@@ -8,6 +8,7 @@ import { Link } from "wouter";
 export default function Confirmation() {
   const [, params] = useRoute("/confirmation/:id");
   const id = Number(params?.id);
+  const validId = !isNaN(id) && id > 0;
   const { data: payment, isLoading, error } = usePayment(id);
   const [waitTime, setWaitTime] = useState(0);
   const [bankUrl, setBankUrl] = useState<string | null>(null);
@@ -43,7 +44,26 @@ export default function Confirmation() {
     return () => clearInterval(interval);
   }, []);
 
-  if (isLoading) {
+  if (!validId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center space-y-6">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto text-red-600">
+            <XCircle className="w-10 h-10" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900" data-testid="text-error-title">Invalid Payment</h2>
+            <p className="text-muted-foreground mt-2">This payment link is not valid.</p>
+          </div>
+          <Link href="/checkout">
+            <Button variant="outline" className="w-full" data-testid="button-try-again">Start New Payment</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || (!payment && !error)) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 text-center space-y-6">
         <div className="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center relative">
@@ -57,7 +77,7 @@ export default function Confirmation() {
     );
   }
 
-  if (error || !payment) {
+  if (error && !payment) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center space-y-6">
