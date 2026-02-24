@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useCreatePayment, useBanks } from "@/hooks/use-payments";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
 import { ShoppingBag, ShieldCheck, ArrowRight, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +24,6 @@ export default function CustomerCheckout() {
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
-  const [, navigate] = useLocation();
   
   const { mutate, isPending } = useCreatePayment();
   const { data: banks, isLoading: banksLoading } = useBanks();
@@ -71,11 +69,13 @@ export default function CustomerCheckout() {
       },
       {
         onSuccess: (data) => {
-          sessionStorage.setItem(
-            `blinkpay_redirect_${data.paymentId}`,
-            data.redirectUri
-          );
-          navigate(`/confirmation/${data.paymentId}`);
+          const isInIframe = window.self !== window.top;
+          
+          if (isInIframe) {
+            window.open(data.redirectUri, "_blank");
+          } else {
+            window.location.href = data.redirectUri;
+          }
         },
         onError: (error) => {
           setStep("bank");

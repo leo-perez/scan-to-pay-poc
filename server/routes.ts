@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { seedDatabase } from "./seed";
-import { createQuickPayment, getQuickPaymentStatus, isBlinkPayConfigured, getAvailableBanks, mapBlinkPayStatus } from "./blinkpay";
+import { createQuickPayment, getQuickPaymentStatus, isBlinkPayConfigured, getAvailableBanks } from "./blinkpay";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -41,25 +41,6 @@ export async function registerRoutes(
   // List payments (for Merchant Dashboard)
   app.get(api.payments.list.path, async (req, res) => {
     const payments = await storage.getPayments();
-
-    if (isBlinkPayConfigured()) {
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const pendingWithBlinkId = payments.filter(
-        (p) => p.status === "pending" && p.blinkPayId && new Date(p.createdAt!) > oneDayAgo
-      );
-      for (const p of pendingWithBlinkId) {
-        try {
-          const blinkStatus = await getQuickPaymentStatus(p.blinkPayId!);
-          if (blinkStatus.status !== p.status) {
-            const updated = await storage.updatePaymentStatus(p.id, blinkStatus.status);
-            Object.assign(p, updated);
-          }
-        } catch (err) {
-          console.error(`Error checking BlinkPay status for payment ${p.id}:`, err);
-        }
-      }
-    }
-
     res.json(payments);
   });
 
@@ -168,41 +149,6 @@ export async function registerRoutes(
       }
       console.error(err);
       res.status(500).json({ message: "Internal Server Error" });
-    }
-  });
-
-  // --- BlinkPay Webhook ---
-  app.post("/api/webhooks/blinkpay", async (req, res) => {
-    try {
-      console.log("BlinkPay webhook received:", JSON.stringify(req.body, null, 2));
-
-      const quickPaymentId = req.body?.quick_payment_id;
-      const consentStatus = req.body?.status;
-
-      if (!quickPaymentId) {
-        console.warn("Webhook: Missing quick_payment_id");
-        return res.status(200).json({ message: "OK" });
-      }
-
-      const payment = await storage.getPaymentByBlinkPayId(quickPaymentId);
-
-      if (!payment) {
-        console.warn(`Webhook: No payment found for BlinkPay ID ${quickPaymentId}`);
-        return res.status(200).json({ message: "OK" });
-      }
-
-      if (consentStatus) {
-        const mappedStatus = mapBlinkPayStatus(consentStatus);
-        if (mappedStatus !== "pending" && mappedStatus !== payment.status) {
-          await storage.updatePaymentStatus(payment.id, mappedStatus);
-          console.log(`Webhook: Updated payment ${payment.id} from ${payment.status} to ${mappedStatus} (consent: ${consentStatus})`);
-        }
-      }
-
-      res.status(200).json({ message: "OK" });
-    } catch (err) {
-      console.error("Webhook error:", err);
-      res.status(200).json({ message: "OK" });
     }
   });
 
