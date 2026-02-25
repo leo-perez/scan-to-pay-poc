@@ -2,12 +2,13 @@ import axios from "axios";
 import { 
   BlinkDebitClient, 
   GatewayFlow, 
-  RedirectFlow,
+  RedirectFlowHint,
   AuthFlowDetailTypeEnum,
   AmountCurrencyEnum,
   QuickPaymentRequest as BlinkQuickPaymentRequest,
   Bank,
-  BankMetadata
+  BankMetadata,
+  FlowHintTypeEnum
 } from "blink-debit-api-client-node";
 
 interface QuickPaymentRequest {
@@ -63,26 +64,20 @@ export async function createQuickPayment(request: QuickPaymentRequest): Promise<
   // Format amount to always have 2 decimal places (BlinkPay requires this)
   const formattedAmount = parseFloat(request.amount).toFixed(2);
 
-  let flowDetail: GatewayFlow | RedirectFlow;
+  const gatewayFlow = new GatewayFlow();
+  gatewayFlow.type = AuthFlowDetailTypeEnum.Gateway;
+  gatewayFlow.redirectUri = request.redirectUri;
 
   if (request.bank) {
-    // Use RedirectFlow when bank is specified - bypasses bank selection screen
-    const redirectFlow = new RedirectFlow();
-    redirectFlow.type = AuthFlowDetailTypeEnum.Redirect;
-    redirectFlow.redirectUri = request.redirectUri;
-    redirectFlow.bank = request.bank as Bank;
-    flowDetail = redirectFlow;
-  } else {
-    // Use GatewayFlow for BlinkPay's hosted bank selection
-    const gatewayFlow = new GatewayFlow();
-    gatewayFlow.type = AuthFlowDetailTypeEnum.Gateway;
-    gatewayFlow.redirectUri = request.redirectUri;
-    flowDetail = gatewayFlow;
+    const flowHint = new RedirectFlowHint();
+    flowHint.type = FlowHintTypeEnum.Redirect;
+    flowHint.bank = request.bank as Bank;
+    gatewayFlow.flowHint = flowHint;
   }
 
   const paymentRequest: BlinkQuickPaymentRequest = {
     flow: {
-      detail: flowDetail,
+      detail: gatewayFlow,
     },
     amount: {
       currency: AmountCurrencyEnum.NZD,
