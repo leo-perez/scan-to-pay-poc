@@ -15,8 +15,30 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
-let lastSyncTime = 0;
-const SYNC_INTERVAL_MS = 10000;
+let isSyncing = false;
+
+async function syncPendingPayments() {
+  if (!isBlinkPayConfigured() || isSyncing) return;
+  isSyncing = true;
+  try {
+    const unresolvedPayments = await storage.getUnresolvedBlinkPayments(10);
+    for (const payment of unresolvedPayments) {
+      try {
+        const blinkStatus = await withTimeout(getQuickPaymentStatus(payment.blinkPayId!), 5000);
+        if (blinkStatus.status !== payment.status) {
+          await storage.updatePaymentStatus(payment.id, blinkStatus.status);
+          console.log(`Background sync: payment ${payment.id} updated to ${blinkStatus.status}`);
+        }
+      } catch (err) {
+        console.error(`Background sync: failed to check payment ${payment.id}:`, err instanceof Error ? err.message : err);
+      }
+    }
+  } catch (err) {
+    console.error("Background sync error:", err);
+  } finally {
+    isSyncing = false;
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -25,6 +47,9 @@ export async function registerRoutes(
 
   // Seed data on startup
   await seedDatabase();
+
+  // Start background payment status sync (every 15 seconds)
+  setInterval(syncPendingPayments, 15000);
 
   // --- Banks Route ---
   app.get(api.banks.list.path, async (req, res) => {
@@ -50,37 +75,13 @@ export async function registerRoutes(
 
   // --- Payment Routes ---
 
-  // List payments (for Merchant Dashboard)
+  // List payments (for Merchant Dashboard) - simple DB query, no BlinkPay calls
   app.get(api.payments.list.path, async (req, res) => {
-    const now = Date.now();
-    if (isBlinkPayConfigured() && now - lastSyncTime >= SYNC_INTERVAL_MS) {
-      lastSyncTime = now;
-      try {
-        const pendingPayments = await storage.getUnresolvedBlinkPayments(10);
-        if (pendingPayments.length > 0) {
-          const statusChecks = await Promise.allSettled(
-            pendingPayments.map(async (payment) => {
-              const blinkStatus = await withTimeout(getQuickPaymentStatus(payment.blinkPayId!), 5000);
-              if (blinkStatus.status !== payment.status) {
-                await storage.updatePaymentStatus(payment.id, blinkStatus.status);
-              }
-            })
-          );
-          const failures = statusChecks.filter((r) => r.status === "rejected");
-          if (failures.length > 0) {
-            console.error(`Failed to check status for ${failures.length}/${pendingPayments.length} pending payments`);
-          }
-        }
-      } catch (err) {
-        console.error("Error syncing pending payment statuses:", err);
-      }
-    }
-
     const payments = await storage.getPayments();
     res.json(payments);
   });
 
-  // Get single payment status
+  // Get single payment status - checks BlinkPay directly for fast confirmation page updates
   app.get(api.payments.get.path, async (req, res) => {
     const idParam = req.params.id;
     const id = parseInt(Array.isArray(idParam) ? idParam[0] : idParam);
@@ -135,11 +136,9 @@ export async function registerRoutes(
       const useMockMode = process.env.USE_MOCK_PAYMENT === "true";
 
       if (useMockMode) {
-        // Explicit mock mode for development
         console.log("Mock mode enabled, using mock gateway");
         redirectUri = `/api/mock-blinkpay-gateway?paymentId=${payment.id}`;
       } else if (isBlinkPayConfigured()) {
-        // Real BlinkPay integration
         try {
           console.log("Creating BlinkPay quick payment...");
           const blinkResponse = await createQuickPayment({
@@ -149,20 +148,17 @@ export async function registerRoutes(
             bank: input.bank,
           });
 
-          // Update payment with BlinkPay ID
           await storage.updatePaymentStatus(payment.id, "pending", blinkResponse.quickPaymentId);
           redirectUri = blinkResponse.redirectUri;
           console.log("BlinkPay payment created:", blinkResponse.quickPaymentId);
         } catch (err: any) {
           console.error("BlinkPay API error:", err.message);
-          // In production, fail the request rather than falling back to mock
           await storage.updatePaymentStatus(payment.id, "failed");
           return res.status(502).json({ 
             message: "Payment gateway error. Please try again later." 
           });
         }
       } else {
-        // No BlinkPay configured and not in mock mode - error
         console.error("BlinkPay not configured and mock mode disabled");
         await storage.updatePaymentStatus(payment.id, "failed");
         return res.status(503).json({ 

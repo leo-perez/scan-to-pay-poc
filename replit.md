@@ -50,7 +50,8 @@ Preferred communication style: Simple, everyday language.
   - Configuration: BLINKPAY_CLIENT_ID, BLINKPAY_CLIENT_SECRET, and BLINKPAY_SANDBOX environment variables
   - Flow: Quick Payment redirect flow with bank selection, redirect URI callback to /confirmation/:id
   - Timeout: 10s axios timeout on HTTP client, 5s Promise.race timeout on status checks in route handlers
-  - Status sync: List endpoint throttles BlinkPay status checks to every 10 seconds (not every poll)
+  - Status sync: Background worker (setInterval every 15s) syncs unresolved payment statuses sequentially; list endpoint is a pure DB query with no BlinkPay calls
+  - Single payment endpoint checks BlinkPay directly for fast confirmation page updates
   - Consent statuses mapped: Authorised/Consumed → completed, Rejected/Revoked → failed, others → pending
 
 ### Database

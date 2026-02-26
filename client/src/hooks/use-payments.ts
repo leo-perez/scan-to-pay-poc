@@ -41,14 +41,7 @@ export function usePayment(id: number) {
     },
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      if (status === "completed") return false;
-      if (status === "failed") {
-        const updatedAt = query.state.data?.updatedAt;
-        if (updatedAt && Date.now() - new Date(updatedAt).getTime() > 30000) {
-          return false;
-        }
-      }
-      return 2000;
+      return status === "completed" || status === "failed" ? false : 2000;
     },
   });
 }
