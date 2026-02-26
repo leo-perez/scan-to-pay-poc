@@ -43,15 +43,21 @@ function getBlinkClient(): BlinkDebitClient {
       throw new Error("BLINKPAY_CLIENT_ID and BLINKPAY_CLIENT_SECRET must be configured");
     }
 
+    console.log(`BlinkPay credential diagnostics:`);
+    console.log(`  Client ID: length=${clientId.length}, starts="${clientId.substring(0, 4)}...", ends="...${clientId.substring(clientId.length - 4)}"`);
+    console.log(`  Client Secret: length=${clientSecret.length}, starts="${clientSecret.substring(0, 4)}...", ends="...${clientSecret.substring(clientSecret.length - 4)}"`);
+    console.log(`  Client ID has whitespace: ${clientId !== clientId.trim()}`);
+    console.log(`  Client Secret has whitespace: ${clientSecret !== clientSecret.trim()}`);
+
     const isSandbox = process.env.BLINKPAY_SANDBOX !== "false";
     const debitUrl = isSandbox 
       ? "https://sandbox.debit.blinkpay.co.nz"
       : "https://debit.blinkpay.co.nz";
 
     const axiosInstance = axios.create();
-    blinkClient = new BlinkDebitClient(axiosInstance, debitUrl, clientId, clientSecret);
+    blinkClient = new BlinkDebitClient(axiosInstance, debitUrl, clientId.trim(), clientSecret.trim());
 
-    console.log(`BlinkPay client initialized (${isSandbox ? 'sandbox' : 'production'} mode)`);
+    console.log(`BlinkPay client initialized (${isSandbox ? 'sandbox' : 'production'} mode, url=${debitUrl})`);
   }
 
   return blinkClient;
