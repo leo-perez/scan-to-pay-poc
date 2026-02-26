@@ -1,16 +1,36 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useCreatePayment, useBanks } from "@/hooks/use-payments";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, ShieldCheck, ArrowRight, ArrowLeft, Loader2, Building2, CheckCircle } from "lucide-react";
+import { ShoppingBag, ShieldCheck, ArrowRight, ArrowLeft, Loader2, CheckCircle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSearch } from "wouter";
+
+import anzLogo from "@assets/Logo_Bank_ANZ_1770245105760.png";
+import asbLogo from "@assets/Logo_Bank_ASB_1770245105761.png";
+import bnzLogo from "@assets/Logo_Bank_BNZ_1770245105762.png";
+import pnzLogo from "@assets/Logo_Bank_The_Co-operative_Bank_1770245105762.png";
+
+const bankLogos: Record<string, string> = {
+  ANZ: anzLogo,
+  ASB: asbLogo,
+  BNZ: bnzLogo,
+  PNZ: pnzLogo,
+};
 
 type CheckoutStep = "amount" | "bank" | "redirecting";
 
 export default function CustomerCheckout() {
-  const [step, setStep] = useState<CheckoutStep>("amount");
-  const [amount, setAmount] = useState("");
-  const [reference, setReference] = useState("");
+  const search = useSearch();
+  const urlParams = useMemo(() => new URLSearchParams(search), [search]);
+  
+  const prefilledAmount = urlParams.get("amount");
+  const prefilledRef = urlParams.get("ref");
+  const isAmountLocked = !!(prefilledAmount && !isNaN(Number(prefilledAmount)) && Number(prefilledAmount) > 0);
+
+  const [step, setStep] = useState<CheckoutStep>(isAmountLocked ? "bank" : "amount");
+  const [amount, setAmount] = useState(isAmountLocked ? prefilledAmount! : "");
+  const [reference, setReference] = useState(prefilledRef || "");
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   
   const { mutate, isPending } = useCreatePayment();
@@ -107,21 +127,24 @@ export default function CustomerCheckout() {
             </h1>
             <p className="text-muted-foreground text-sm">
               {step === "amount" && "Secure checkout via BlinkPay"}
-              {step === "bank" && formatAmount(amount)}
+              {step === "bank" && (
+                <span className="flex items-center justify-center gap-1">
+                  {formatAmount(amount)}
+                  {isAmountLocked && <Lock className="w-3 h-3" />}
+                </span>
+              )}
               {step === "redirecting" && "Redirecting to your bank"}
             </p>
           </div>
 
           <div className="flex justify-center gap-2 mt-6">
-            {["amount", "bank", "redirecting"].map((s, idx) => (
+            {(isAmountLocked ? ["bank", "redirecting"] : ["amount", "bank", "redirecting"]).map((s, idx, arr) => (
               <div
                 key={s}
                 className={cn(
                   "w-2 h-2 rounded-full transition-all",
                   step === s ? "bg-primary w-6" : 
-                  (step === "bank" && idx === 0) || (step === "redirecting" && idx <= 1) 
-                    ? "bg-primary/50" 
-                    : "bg-gray-300"
+                  arr.indexOf(step) > idx ? "bg-primary/50" : "bg-gray-300"
                 )}
               />
             ))}
@@ -187,14 +210,23 @@ export default function CustomerCheckout() {
 
           {step === "bank" && (
             <div className="space-y-6">
-              <button 
-                onClick={handleBack}
-                data-testid="button-back-to-amount"
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back
-              </button>
+              {!isAmountLocked && (
+                <button 
+                  onClick={handleBack}
+                  data-testid="button-back-to-amount"
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gray-900 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </button>
+              )}
+
+              {isAmountLocked && prefilledRef && (
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className="text-sm text-muted-foreground">Reference</p>
+                  <p className="font-semibold text-gray-900">{prefilledRef}</p>
+                </div>
+              )}
 
               <div className="space-y-3">
                 {banksLoading ? (
@@ -214,11 +246,16 @@ export default function CustomerCheckout() {
                           : "border-gray-100 hover:border-gray-200 bg-gray-50"
                       )}
                     >
-                      <div className={cn(
-                        "w-12 h-12 rounded-xl flex items-center justify-center",
-                        selectedBank === bank.id ? "bg-primary text-white" : "bg-white border border-gray-200"
-                      )}>
-                        <Building2 className="w-6 h-6" />
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white border border-gray-200 overflow-hidden">
+                        {bankLogos[bank.id] ? (
+                          <img 
+                            src={bankLogos[bank.id]} 
+                            alt={bank.name} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-xs font-bold text-gray-500">{bank.id}</span>
+                        )}
                       </div>
                       <div className="flex-1">
                         <div className="font-semibold text-gray-900">{bank.name}</div>

@@ -1,11 +1,28 @@
+import { useState } from "react";
 import { usePayments } from "@/hooks/use-payments";
 import QRCode from "react-qr-code";
 import { format } from "date-fns";
-import { Store, RefreshCw, ArrowUpRight, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Store, RefreshCw, CheckCircle2, XCircle, Clock, DollarSign } from "lucide-react";
 
 export default function MerchantDashboard() {
   const { data: payments, isLoading } = usePayments();
-  const checkoutUrl = `${window.location.origin}/checkout`;
+  const [qrAmount, setQrAmount] = useState("");
+  const [qrReference, setQrReference] = useState("");
+
+  const buildCheckoutUrl = () => {
+    const base = `${window.location.origin}/checkout`;
+    const params = new URLSearchParams();
+    if (qrAmount && !isNaN(Number(qrAmount)) && Number(qrAmount) > 0) {
+      params.set("amount", qrAmount);
+    }
+    if (qrReference.trim()) {
+      params.set("ref", qrReference.trim());
+    }
+    const queryString = params.toString();
+    return queryString ? `${base}?${queryString}` : base;
+  };
+
+  const checkoutUrl = buildCheckoutUrl();
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 md:p-12">
@@ -35,14 +52,50 @@ export default function MerchantDashboard() {
           
           {/* QR Code Card */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-3xl p-8 shadow-xl shadow-gray-200/50 border border-gray-100 flex flex-col items-center text-center space-y-8 sticky top-8">
+            <div className="bg-white rounded-3xl p-8 shadow-xl shadow-gray-200/50 border border-gray-100 flex flex-col items-center text-center space-y-6 sticky top-8">
               <div className="space-y-2">
                 <h2 className="text-xl font-bold font-display">Scan to Pay</h2>
-                <p className="text-sm text-muted-foreground">Show this code to customers</p>
+                <p className="text-sm text-muted-foreground">Generate QR code for customer checkout</p>
+              </div>
+
+              <div className="w-full space-y-4">
+                <div className="space-y-2 text-left">
+                  <label htmlFor="qr-amount" className="text-sm font-medium text-gray-700">
+                    Amount (NZD) <span className="text-gray-400 font-normal">- Optional</span>
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      id="qr-amount"
+                      data-testid="input-qr-amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="w-full pl-9 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                      value={qrAmount}
+                      onChange={(e) => setQrAmount(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-left">
+                  <label htmlFor="qr-reference" className="text-sm font-medium text-gray-700">
+                    Reference <span className="text-gray-400 font-normal">- Optional</span>
+                  </label>
+                  <input
+                    id="qr-reference"
+                    data-testid="input-qr-reference"
+                    type="text"
+                    placeholder="ORDER-123"
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                    value={qrReference}
+                    onChange={(e) => setQrReference(e.target.value)}
+                  />
+                </div>
               </div>
               
-              <div className="p-6 bg-white rounded-3xl border-2 border-dashed border-gray-200 shadow-inner">
-                <div className="w-full aspect-square max-w-[200px] flex items-center justify-center">
+              <div className="p-5 bg-white rounded-2xl border-2 border-dashed border-gray-200 shadow-inner">
+                <div className="w-full aspect-square max-w-[180px] flex items-center justify-center">
                   <QRCode
                     value={checkoutUrl}
                     size={256}
@@ -52,7 +105,14 @@ export default function MerchantDashboard() {
                 </div>
               </div>
 
-              <div className="w-full bg-gray-50 p-4 rounded-xl text-xs font-mono break-all text-gray-500 border border-gray-100">
+              {qrAmount && Number(qrAmount) > 0 && (
+                <div className="text-center">
+                  <span className="text-2xl font-bold text-primary">${Number(qrAmount).toFixed(2)}</span>
+                  <span className="text-sm text-muted-foreground ml-1">NZD</span>
+                </div>
+              )}
+
+              <div className="w-full bg-gray-50 p-3 rounded-xl text-xs font-mono break-all text-gray-500 border border-gray-100">
                 {checkoutUrl}
               </div>
             </div>
