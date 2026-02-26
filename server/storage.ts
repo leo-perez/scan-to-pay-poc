@@ -1,12 +1,12 @@
 
 import { db } from "./db";
 import { payments, type Payment, type InsertPayment } from "@shared/schema";
-import { eq, desc, and, isNotNull } from "drizzle-orm";
+import { eq, desc, and, isNotNull, ne } from "drizzle-orm";
 
 export interface IStorage {
   getPayment(id: number): Promise<Payment | undefined>;
   getPayments(): Promise<Payment[]>;
-  getPendingBlinkPayments(limit?: number): Promise<Payment[]>;
+  getUnresolvedBlinkPayments(limit?: number): Promise<Payment[]>;
   createPayment(payment: InsertPayment & { blinkPayId?: string; status?: string }): Promise<Payment>;
   updatePaymentStatus(id: number, status: string, blinkPayId?: string): Promise<Payment>;
 }
@@ -21,13 +21,13 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(payments).orderBy(desc(payments.createdAt));
   }
 
-  async getPendingBlinkPayments(limit: number = 10): Promise<Payment[]> {
+  async getUnresolvedBlinkPayments(limit: number = 10): Promise<Payment[]> {
     return await db
       .select()
       .from(payments)
       .where(
         and(
-          eq(payments.status, "pending"),
+          ne(payments.status, "completed"),
           isNotNull(payments.blinkPayId)
         )
       )

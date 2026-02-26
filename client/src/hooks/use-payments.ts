@@ -40,9 +40,15 @@ export function usePayment(id: number) {
       return parsePayment(parsed);
     },
     refetchInterval: (query) => {
-      // Poll until completed or failed
       const status = query.state.data?.status;
-      return status === "completed" || status === "failed" ? false : 2000;
+      if (status === "completed") return false;
+      if (status === "failed") {
+        const updatedAt = query.state.data?.updatedAt;
+        if (updatedAt && Date.now() - new Date(updatedAt).getTime() > 30000) {
+          return false;
+        }
+      }
+      return 2000;
     },
   });
 }

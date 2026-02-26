@@ -42,7 +42,7 @@ export async function registerRoutes(
   app.get(api.payments.list.path, async (req, res) => {
     if (isBlinkPayConfigured()) {
       try {
-        const pendingPayments = await storage.getPendingBlinkPayments(10);
+        const pendingPayments = await storage.getUnresolvedBlinkPayments(10);
         if (pendingPayments.length > 0) {
           const statusChecks = await Promise.allSettled(
             pendingPayments.map(async (payment) => {
@@ -77,8 +77,7 @@ export async function registerRoutes(
       return res.status(404).json({ message: "Payment not found" });
     }
 
-    // If payment has a BlinkPay ID and is still pending, check status with BlinkPay
-    if (payment.blinkPayId && payment.status === "pending" && isBlinkPayConfigured()) {
+    if (payment.blinkPayId && payment.status !== "completed" && isBlinkPayConfigured()) {
       try {
         const blinkStatus = await getQuickPaymentStatus(payment.blinkPayId);
         if (blinkStatus.status !== payment.status) {
