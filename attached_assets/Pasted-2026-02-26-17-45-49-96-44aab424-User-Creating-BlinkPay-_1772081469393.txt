@@ -1,0 +1,100 @@
+2026-02-26 17:45:49.96
+44aab424
+User
+Creating BlinkPay quick payment with request: {
+2026-02-26 17:45:49.96
+44aab424
+User
+}
+2026-02-26 17:45:49.96
+44aab424
+User
+"particulars": "ScanToPay",
+2026-02-26 17:45:49.96
+44aab424
+User
+Creating BlinkPay quick payment...
+2026-02-26 17:45:49.96
+44aab424
+User
+}
+2026-02-26 17:45:49.96
+44aab424
+User
+"amount": {
+2026-02-26 17:45:49.96
+44aab424
+User
+"pcr": {
+2026-02-26 17:45:49.96
+44aab424
+User
+},
+2026-02-26 17:45:49.96
+44aab424
+User
+"redirectUri": "https://pay-open-back.replit.app/confirmation/13",
+2026-02-26 17:45:49.96
+44aab424
+User
+},
+2026-02-26 17:45:49.96
+44aab424
+User
+"reference": "test"
+2026-02-26 17:45:49.96
+44aab424
+User
+"type": "redirect",
+2026-02-26 17:45:49.96
+44aab424
+User
+"code": "PAYMENT",
+2026-02-26 17:45:49.96
+44aab424
+User
+"total": "10.00"
+2026-02-26 17:45:49.96
+44aab424
+User
+"currency": "NZD",
+2026-02-26 17:45:50.91
+44aab424
+User
+Headers: {"date":"Thu, 26 Feb 2026 04:45:50 GMT","content-type":"application/json","content-length":"176","connection":"keep-alive","server":"nginx","vary":"Origin, Access-Control-Request-Method, Access-Control-Request-Headers","x-correlation-id":"fb4b9140-54c3-44a8-967e-92a6de202b0d","request-id":"b352a180-19fd-45d8-b4af-14d56f5e8b31","cache-control":"no-cache, no-store, max-age=0, must-revalidate","pragma":"no-cache","expires":"0","x-content-type-options":"nosniff","x-frame-options":"DENY","x-xss-protection":"1; mode=block","referrer-policy":"no-referrer"}
+2026-02-26 17:45:50.91
+44aab424
+User
+Status Code: 400
+2026-02-26 17:45:50.91
+44aab424
+User
+Body: invalid_client
+2026-02-26 17:45:52.38
+44aab424
+User
+Status Code: 400
+2026-02-26 17:45:58.23
+44aab424
+User
+Headers: {"date":"Thu, 26 Feb 2026 04:45:58 GMT","content-type":"application/json","content-length":"175","connection":"keep-alive","server":"nginx","vary":"Origin, Access-Control-Request-Method, Access-Control-Request-Headers","x-correlation-id":"fb4b9140-54c3-44a8-967e-92a6de202b0d","request-id":"b352a180-19fd-45d8-b4af-14d56f5e8b31","cache-control":"no-cache, no-store, max-age=0, must-revalidate","pragma":"no-cache","expires":"0","x-content-type-options":"nosniff","x-frame-options":"DENY","x-xss-protection":"1; mode=block","referrer-policy":"no-referrer"}
+2026-02-26 17:45:58.23
+44aab424
+User
+Status Code: 400
+2026-02-26 17:45:58.23
+44aab424
+User
+BlinkPay API error: Failed to create payment with BlinkPay: invalid_client
+2026-02-26 17:45:58.23
+44aab424
+User
+Failed to create BlinkPay payment: invalid_client
+2026-02-26 17:45:58.23
+44aab424
+User
+Body: invalid_client
+2026-02-26 17:45:58.27
+44aab424
+User
+4:45:58 AM [express] POST /api/payments 502 in 8645ms :: {"message":"Payment gateway error. Please try again later."}
