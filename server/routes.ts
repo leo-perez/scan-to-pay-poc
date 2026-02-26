@@ -40,6 +40,28 @@ export async function registerRoutes(
 
   // List payments (for Merchant Dashboard)
   app.get(api.payments.list.path, async (req, res) => {
+    if (isBlinkPayConfigured()) {
+      try {
+        const pendingPayments = await storage.getPendingBlinkPayments(10);
+        if (pendingPayments.length > 0) {
+          const statusChecks = await Promise.allSettled(
+            pendingPayments.map(async (payment) => {
+              const blinkStatus = await getQuickPaymentStatus(payment.blinkPayId!);
+              if (blinkStatus.status !== payment.status) {
+                await storage.updatePaymentStatus(payment.id, blinkStatus.status);
+              }
+            })
+          );
+          const failures = statusChecks.filter((r) => r.status === "rejected");
+          if (failures.length > 0) {
+            console.error(`Failed to check status for ${failures.length}/${pendingPayments.length} pending payments`);
+          }
+        }
+      } catch (err) {
+        console.error("Error syncing pending payment statuses:", err);
+      }
+    }
+
     const payments = await storage.getPayments();
     res.json(payments);
   });
