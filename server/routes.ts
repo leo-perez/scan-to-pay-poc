@@ -6,6 +6,18 @@ import { z } from "zod";
 import { seedDatabase } from "./seed";
 import { createQuickPayment, getQuickPaymentStatus, isBlinkPayConfigured, getAvailableBanks } from "./blinkpay";
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("BlinkPay status check timed out")), ms)
+    ),
+  ]);
+}
+
+let lastSyncTime = 0;
+const SYNC_INTERVAL_MS = 10000;
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -40,13 +52,15 @@ export async function registerRoutes(
 
   // List payments (for Merchant Dashboard)
   app.get(api.payments.list.path, async (req, res) => {
-    if (isBlinkPayConfigured()) {
+    const now = Date.now();
+    if (isBlinkPayConfigured() && now - lastSyncTime >= SYNC_INTERVAL_MS) {
+      lastSyncTime = now;
       try {
         const pendingPayments = await storage.getUnresolvedBlinkPayments(10);
         if (pendingPayments.length > 0) {
           const statusChecks = await Promise.allSettled(
             pendingPayments.map(async (payment) => {
-              const blinkStatus = await getQuickPaymentStatus(payment.blinkPayId!);
+              const blinkStatus = await withTimeout(getQuickPaymentStatus(payment.blinkPayId!), 5000);
               if (blinkStatus.status !== payment.status) {
                 await storage.updatePaymentStatus(payment.id, blinkStatus.status);
               }
@@ -79,7 +93,7 @@ export async function registerRoutes(
 
     if (payment.blinkPayId && payment.status !== "completed" && isBlinkPayConfigured()) {
       try {
-        const blinkStatus = await getQuickPaymentStatus(payment.blinkPayId);
+        const blinkStatus = await withTimeout(getQuickPaymentStatus(payment.blinkPayId), 5000);
         if (blinkStatus.status !== payment.status) {
           const updated = await storage.updatePaymentStatus(id, blinkStatus.status);
           return res.json(updated);

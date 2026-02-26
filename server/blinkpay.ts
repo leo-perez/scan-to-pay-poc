@@ -54,7 +54,7 @@ function getBlinkClient(): BlinkDebitClient {
       ? "https://sandbox.debit.blinkpay.co.nz"
       : "https://debit.blinkpay.co.nz";
 
-    const axiosInstance = axios.create();
+    const axiosInstance = axios.create({ timeout: 10000 });
     blinkClient = new BlinkDebitClient(axiosInstance, debitUrl, clientId.trim(), clientSecret.trim());
 
     console.log(`BlinkPay client initialized (${isSandbox ? 'sandbox' : 'production'} mode, url=${debitUrl})`);

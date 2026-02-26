@@ -47,8 +47,11 @@ Preferred communication style: Simple, everyday language.
 - **BlinkPay API**: New Zealand Open Banking payment provider
   - Sandbox: https://sandbox.debit.blinkpay.co.nz
   - Production: https://debit.blinkpay.co.nz
-  - Configuration: BLINKPAY_API_KEY and BLINKPAY_SANDBOX environment variables
-  - Flow: Quick Payment gateway flow with redirect URI
+  - Configuration: BLINKPAY_CLIENT_ID, BLINKPAY_CLIENT_SECRET, and BLINKPAY_SANDBOX environment variables
+  - Flow: Quick Payment redirect flow with bank selection, redirect URI callback to /confirmation/:id
+  - Timeout: 10s axios timeout on HTTP client, 5s Promise.race timeout on status checks in route handlers
+  - Status sync: List endpoint throttles BlinkPay status checks to every 10 seconds (not every poll)
+  - Consent statuses mapped: Authorised/Consumed → completed, Rejected/Revoked → failed, others → pending
 
 ### Database
 - **PostgreSQL**: Primary data store
