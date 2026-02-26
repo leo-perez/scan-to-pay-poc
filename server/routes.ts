@@ -82,6 +82,22 @@ export async function registerRoutes(
   });
 
   // Get single payment status - checks BlinkPay directly for fast confirmation page updates
+  function normalizeBlinkPayStatus(s: any) {
+    const status = String(s ?? "").toLowerCase();
+
+    if (["completed", "success", "succeeded", "paid", "settled", "confirmed"].includes(status)) {
+      return "completed";
+    }
+    if (["failed", "error", "declined", "rejected", "cancelled", "canceled"].includes(status)) {
+      return "failed";
+    }
+    if (["pending", "processing", "in_progress", "authorised", "authorized"].includes(status)) {
+      return "pending";
+    }
+
+    // safe fallback
+    return "pending";
+  }
   app.get(api.payments.get.path, async (req, res) => {
     const idParam = req.params.id;
     const id = parseInt(Array.isArray(idParam) ? idParam[0] : idParam);
@@ -95,8 +111,10 @@ export async function registerRoutes(
     if (payment.blinkPayId && payment.status !== "completed" && isBlinkPayConfigured()) {
       try {
         const blinkStatus = await withTimeout(getQuickPaymentStatus(payment.blinkPayId), 5000);
-        if (blinkStatus.status !== payment.status) {
-          const updated = await storage.updatePaymentStatus(id, blinkStatus.status);
+        const normalized = normalizeBlinkPayStatus(blinkStatus.status);
+
+        if (normalized !== payment.status) {
+          const updated = await storage.updatePaymentStatus(id, normalized);
           return res.json(updated);
         }
       } catch (err) {
