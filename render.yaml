@@ -1,0 +1,15 @@
+# Render Blueprint: deploy this repo as a Web Service.
+# In Render Dashboard: New → Blueprint → connect this repo; Render will use this file.
+# Set environment variables in the Dashboard (Environment tab) — do not commit secrets.
+
+services:
+  - type: web
+    name: scan-to-pay-poc
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    # Set these in Render Dashboard → Environment:
+    # - DATABASE_URL (required) — e.g. your Supabase connection string
+    # - BLINKPAY_CLIENT_ID, BLINKPAY_CLIENT_SECRET (for real payments)
+    # - BLINKPAY_SANDBOX=true for sandbox
+    # - APP_BASE_URL — set to your Render URL after first deploy, e.g. https://scan-to-pay-poc-xxxx.onrender.com
