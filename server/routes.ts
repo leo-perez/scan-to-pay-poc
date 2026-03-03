@@ -44,9 +44,9 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-
-  // Seed data on startup
+  console.log("[server] Seeding database...");
   await seedDatabase();
+  console.log("[server] Database ready.");
 
   // Start background payment status sync (every 15 seconds)
   setInterval(syncPendingPayments, 15000);
@@ -172,9 +172,11 @@ export async function registerRoutes(
         } catch (err: any) {
           console.error("BlinkPay API error:", err.message);
           await storage.updatePaymentStatus(payment.id, "failed");
-          return res.status(502).json({ 
-            message: "Payment gateway error. Please try again later." 
-          });
+          const isDev = process.env.NODE_ENV !== "production";
+          const message = isDev && err?.message
+            ? `Payment gateway error: ${err.message}`
+            : "Payment gateway error. Please try again later.";
+          return res.status(502).json({ message });
         }
       } else {
         console.error("BlinkPay not configured and mock mode disabled");

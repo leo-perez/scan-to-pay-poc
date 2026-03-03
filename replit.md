@@ -41,6 +41,26 @@ Preferred communication style: Simple, everyday language.
 - Production: esbuild bundles server code, Vite builds client to dist/public
 - Server dependencies are selectively bundled to reduce cold start times
 
+## BlinkPay setup (make real payments work)
+
+1. **Get API credentials**  
+   Sign up at [BlinkPay Developers](https://www.blinkpay.co.nz/resources-developers) or [Merchants Resources](https://merchants.blinkpay.co.nz/resources) and obtain **Client ID** and **Client Secret** (sandbox for testing).
+
+2. **Add to `.env`** (copy from `.env.example`):
+   ```bash
+   BLINKPAY_CLIENT_ID=your_client_id
+   BLINKPAY_CLIENT_SECRET=your_client_secret
+   BLINKPAY_SANDBOX=true
+   ```
+
+3. **Callback URL (where BlinkPay redirects after payment)**  
+   For local testing, set a base URL BlinkPay can redirect to. **Avoid `http://localhost:5000`** as the callback: some browsers or security tools block redirects from an external site (BlinkPay) to localhost and show “Access to localhost was denied” (HTTP 403).  
+   - **Option A – Same machine, same Wi‑Fi:** Use your computer’s LAN IP, e.g. `APP_BASE_URL=http://192.168.1.5:5000`, set `DEV_LISTEN_ALL=1`, restart the server, and open the app at that URL (not localhost). Whitelist that base in BlinkPay (e.g. `http://192.168.1.5:5000/confirmation`).  
+   - **Option B – Any device/network:** Use a tunnel (e.g. `npx ngrok http 5000`) and set `APP_BASE_URL=https://your-subdomain.ngrok.io`. Whitelist that in BlinkPay.
+
+4. **Optional: test without BlinkPay**  
+   Set `USE_MOCK_PAYMENT=true` in `.env` to use the in-app mock gateway (no credentials needed).
+
 ## External Dependencies
 
 ### Payment Processing

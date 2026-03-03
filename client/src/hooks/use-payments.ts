@@ -39,6 +39,7 @@ export function usePayment(id: number) {
       const parsed = api.payments.get.responses[200].parse(data);
       return parsePayment(parsed);
     },
+    enabled: Number.isInteger(id) && id > 0,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       return status === "completed" || status === "failed" ? false : 2000;

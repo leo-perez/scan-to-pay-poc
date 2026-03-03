@@ -152,7 +152,9 @@ export async function getQuickPaymentStatus(quickPaymentId: string): Promise<Pay
 }
 
 export function isBlinkPayConfigured(): boolean {
-  return !!(process.env.BLINKPAY_CLIENT_ID && process.env.BLINKPAY_CLIENT_SECRET);
+  const id = process.env.BLINKPAY_CLIENT_ID?.trim();
+  const secret = process.env.BLINKPAY_CLIENT_SECRET?.trim();
+  return !!(id && secret);
 }
 
 export async function getAvailableBanks(): Promise<BankInfo[]> {

@@ -3,6 +3,7 @@ import { storage } from "./storage";
 
 export async function seedDatabase() {
   const payments = await storage.getPayments();
+  console.log("[server] Seed: found", payments.length, "existing payments.");
   if (payments.length === 0) {
     console.log("Seeding database with dummy payments...");
     await storage.createPayment({

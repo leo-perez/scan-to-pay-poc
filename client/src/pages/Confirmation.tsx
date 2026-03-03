@@ -1,15 +1,66 @@
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { usePayment } from "@/hooks/use-payments";
 import { Loader2, CheckCircle2, XCircle, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Component, type ReactNode } from "react";
 
-export default function Confirmation() {
+// Parse payment id from pathname (reliable after redirect from BlinkPay; use URL as source of truth)
+function getPaymentIdFromPath(): number | null {
+  if (typeof window === "undefined") return null;
+  const m = /^\/confirmation\/(\d+)/.exec(window.location.pathname);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+class ConfirmationErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center space-y-6">
+            <h2 className="text-xl font-bold text-gray-900">Something went wrong</h2>
+            <p className="text-muted-foreground">The confirmation page couldn’t load. You can go back home.</p>
+            <Link href="/">
+              <Button className="w-full">Return Home</Button>
+            </Link>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function ConfirmationContent() {
   const [, params] = useRoute("/confirmation/:id");
-  const id = Number(params?.id);
-  const { data: payment, isLoading, error } = usePayment(id);
+  const idFromUrl = getPaymentIdFromPath();
+  const idFromParams = params?.id != null ? Number(params.id) : null;
+  const validId = idFromUrl ?? (idFromParams != null && idFromParams > 0 ? idFromParams : null);
 
-  if (isLoading) {
+  const { data: payment, isLoading, isPending, error } = usePayment(validId ?? 0);
+
+  if (validId == null) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 text-center space-y-6">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 space-y-6">
+          <h2 className="text-xl font-bold text-gray-900">Invalid confirmation link</h2>
+          <p className="text-muted-foreground">Use the link from your payment or try again.</p>
+          <Link href="/">
+            <Button className="w-full">Return Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const showLoading = isLoading || (isPending && !payment);
+  if (showLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 text-center space-y-6">
         <div className="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center relative">
@@ -32,7 +83,7 @@ export default function Confirmation() {
           </div>
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Something went wrong</h2>
-            <p className="text-muted-foreground mt-2">We couldn't verify this payment.</p>
+            <p className="text-muted-foreground mt-2">We couldn't verify this payment. {error?.message ?? ""}</p>
           </div>
           <Link href="/checkout">
             <Button variant="outline" className="w-full">Try Again</Button>
@@ -44,7 +95,7 @@ export default function Confirmation() {
 
   const isSuccess = payment.status === "completed";
   const isFailed = payment.status === "failed";
-  const isPending = payment.status === "pending";
+  const paymentPending = payment.status === "pending";
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -63,7 +114,7 @@ export default function Confirmation() {
                 <XCircle className="w-12 h-12" />
               </div>
             )}
-            {isPending && (
+            {paymentPending && (
               <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 animate-pulse-slow">
                 <Loader2 className="w-12 h-12 animate-spin" />
               </div>
@@ -79,7 +130,7 @@ export default function Confirmation() {
                 ? "Your transaction has been processed securely." 
                 : isFailed 
                 ? "Please try again or use a different account."
-                : "Waiting for final confirmation..."
+                : "Waiting for final confirmation…"
               }
             </p>
           </div>
@@ -110,5 +161,13 @@ export default function Confirmation() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Confirmation() {
+  return (
+    <ConfirmationErrorBoundary>
+      <ConfirmationContent />
+    </ConfirmationErrorBoundary>
   );
 }
