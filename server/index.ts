@@ -6,7 +6,11 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// CJS bundle has no import.meta.url; use entry script dir (dist/) for static paths
+const __dirname =
+  typeof import.meta !== "undefined" && import.meta.url
+    ? path.dirname(fileURLToPath(import.meta.url))
+    : path.dirname(process.argv[1] || ".");
 console.log("[server] Starting... (env from", path.resolve(__dirname, "..", ".env") + ")");
 
 const app = express();
